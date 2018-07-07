@@ -1,4 +1,5 @@
 import java.util.concurrent.{Executors, TimeUnit}
+import java.text.SimpleDateFormat
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.{ChannelInitializer, ChannelOption}
@@ -11,6 +12,7 @@ import io.netty.channel.ChannelHandler.Sharable
 import io.netty.channel.{ChannelFutureListener, ChannelHandlerContext, ChannelInboundHandlerAdapter}
 import io.netty.handler.codec.http._
 import io.netty.util.AsciiString
+import io.netty.handler.codec.http.HttpHeaders
 
 class HttpServer() {
   def run(boss: NioEventLoopGroup, worker: NioEventLoopGroup) = {
@@ -47,11 +49,14 @@ class HttpServerHandler() extends ChannelInboundHandlerAdapter {
       val keepAlive = HttpUtil.isKeepAlive(request)
       val response = new DefaultFullHttpResponse(
         HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
-        Unpooled.wrappedBuffer(HttpServerHandler.Content))
-      response.headers().set(HttpServerHandler.ContentType, HttpServerHandler.TextPlain)
-      response.headers().setInt(HttpServerHandler.ContentLength, response.content().readableBytes())
+        Unpooled.wrappedBuffer("Hello, world.".toArray.map(_.toByte)))
+      response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "text/plain")
+      response.headers().setInt(HttpHeaders.Names.CONTENT_LENGTH, response.content().readableBytes())
+      // SimpleDateFormat dateFormatter = new SimpleDateFormat(HTTP_DATE_FORMAT, Locale.US);
+      // dateFormatter.setTimeZone(TimeZone.getTimeZone(HTTP_DATE_GMT_TIMEZONE));
+      // response.headers().set(HttpHeaders.Names.DATE, dateFormatter.format(time.getTime()));
       if (keepAlive) {
-        response.headers().set(HttpServerHandler.Connection, HttpServerHandler.KeepAlive)
+        response.headers().set(HttpHeaders.Names.CONNECTION, "keep-alive")
         ctx.write(response)
       } else {
         ctx.write(response).addListener(ChannelFutureListener.CLOSE)
@@ -66,15 +71,6 @@ class HttpServerHandler() extends ChannelInboundHandlerAdapter {
   override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
     ctx.close()
   }
-}
-
-object HttpServerHandler {
-  val Content = "Hello, world.".toArray.map(_.toByte)
-  val ContentType = AsciiString.cached("Content-Type")
-  val TextPlain = AsciiString.cached("text/plain")
-  val ContentLength = AsciiString.cached("Content-Length")
-  val Connection = AsciiString.cached("Connection")
-  val KeepAlive = AsciiString.cached("keep-alive")
 }
 
 object Main {
